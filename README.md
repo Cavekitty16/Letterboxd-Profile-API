@@ -1,6 +1,7 @@
 # Letterboxd-Profile-API
 
 Letterboxd-Profile-API is a lightweight Node.js service that extracts public profile data from Letterboxd and exposes it through a simple RESTful interface.
+Still in development
 
 ## Features
 
