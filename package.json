@@ -1,0 +1,27 @@
+{
+  "name": "letterboxd-profile-api",
+  "version": "1.0.0",
+  "description": "API specifically designed to scrape data from a user's Letterboxd public profile and return your accounts details",
+  "homepage": "https://github.com/Cavekitty16/Letterboxd-Profile-API#readme",
+  "bugs": {
+    "url": "https://github.com/Cavekitty16/Letterboxd-Profile-API/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cavekitty16/Letterboxd-Profile-API.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "puppeteer": "^25.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
