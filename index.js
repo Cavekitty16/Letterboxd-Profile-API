@@ -36,6 +36,58 @@ app.get('/:username', async (req, res) => {
             return document.querySelector('#backdrop')?.getAttribute('data-backdrop') || null
         })
 
+        const subscription  = await page.evaluate(() => {
+            return document.querySelector('.badge')?.textContent.trim() || null
+        })
+
+        const profileInfo = await page.evaluate(() => {
+            const data = []
+
+            data.bio = document.querySelector('.bio p').textContent.trim()
+            
+            document.querySelectorAll('.profile-metadata .metadatum')
+                .forEach(el => {
+                    const label = el.querySelector('.label')?.textContent.trim()
+                    const link = el.getAttribute('href')
+
+                    if (link) {
+                        if (link.includes('instagram')) {
+                            data.instagram = link
+                        } else if (link.includes('twitter') || link.includes('x.com')) {
+                            data.twitter = link
+                        } else {
+                            data.website = link
+                        }
+                    } 
+
+                    else if (label) {
+                        data.location = label
+                    }
+                })
+                
+            document.querySelectorAll('.profile-stats .profile-statistic')
+                .forEach(el => {
+                    const label = el.querySelector('.label')?.textContent.trim()
+                    const link = el.getAttribute('href')
+
+                    if (link) {
+                        if (link.includes('instagram')) {
+                            data.instagram = link
+                        } else if (link.includes('twitter') || link.includes('x.com')) {
+                            data.twitter = link
+                        } else {
+                            data.website = link
+                        }
+                    } 
+
+                    else if (label) {
+                        data.location = label
+                    }
+                })
+
+            return data
+        })
+
         const favoriteFilmsList = await page.evaluate(() => {
             const movies = []
 
@@ -119,8 +171,8 @@ app.get('/:username', async (req, res) => {
             url, 
             profileImg,
             backdropImg, 
-            // subscription,
-            // description,
+            subscription,
+            profileInfo,
             // bioLinks,
             // filmCount,
             // yearCount,
