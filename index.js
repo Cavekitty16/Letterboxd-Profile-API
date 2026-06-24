@@ -24,168 +24,191 @@ app.get('/:username', async (req, res) => {
 
         await page.goto(url, { waitUntil: 'networkidle2' })
 
-        const nickname = await page.evaluate(() => {
-            return document.querySelector('.displayname').textContent.trim() || null
-        })
+        const headerData = await page.evaluate(() => {
+            const data = {}
 
-        const profileImg = await page.evaluate(() => {
-            return document.querySelector('.profile-avatar img').src || null
-        })
-
-        const backdropImg = await page.evaluate(() => {
-            return document.querySelector('#backdrop')?.getAttribute('data-backdrop') || null
-        })
-
-        const subscription  = await page.evaluate(() => {
-            return document.querySelector('.badge')?.textContent.trim() || null
-        })
-
-        const profileInfo = await page.evaluate(() => {
-            const data = []
-
-            data.bio = document.querySelector('.bio p').textContent.trim()
+            data.nickname = document.querySelector('.displayname')?.textContent.trim() || null
+            data.profileImg = document.querySelector('.profile-avatar img')?.src || null
+            data.backdropImg = document.querySelector('#backdrop')?.getAttribute('data-backdrop') || null
+            data.subscription = document.querySelector('.badge')?.textContent.trim() || 'free'
+            data.description = document.querySelector('.bio p')?.textContent.trim() || null
             
+            data.links = {}
             document.querySelectorAll('.profile-metadata .metadatum')
                 .forEach(el => {
                     const label = el.querySelector('.label')?.textContent.trim()
                     const link = el.getAttribute('href')
-
+                    
                     if (link) {
                         if (link.includes('instagram')) {
-                            data.instagram = link
+                            data.links.instagram = link
                         } else if (link.includes('twitter') || link.includes('x.com')) {
-                            data.twitter = link
+                            data.links.twitter = link
                         } else {
-                            data.website = link
+                            data.links.website = link
                         }
-                    } 
-
-                    else if (label) {
+                    } else if (label) {
                         data.location = label
                     }
                 })
-                
-            document.querySelectorAll('.profile-stats .profile-statistic')
-                .forEach(el => {
-                    const label = el.querySelector('.label')?.textContent.trim()
-                    const link = el.getAttribute('href')
+            
+            data.statistics = {}
+            document.querySelectorAll('.profile-statistic')
+                .forEach(stat => {
+                    const value = stat.querySelector('.value')?.textContent.trim()
+                    const label = stat.querySelector('.definition')?.textContent.trim().toLowerCase()
+                    const link = stat.querySelector('a')?.getAttribute('href')
 
-                    if (link) {
-                        if (link.includes('instagram')) {
-                            data.instagram = link
-                        } else if (link.includes('twitter') || link.includes('x.com')) {
-                            data.twitter = link
-                        } else {
-                            data.website = link
-                        }
-                    } 
+                    if (!value || !label) return
 
-                    else if (label) {
-                        data.location = label
+                    const fullLink = link ? 'https://letterboxd.com' + link : null
+
+                    if (label.includes('films')) {
+                        data.statistics.films = {}
+                        data.statistics.films.count = value
+                        data.statistics.films.url = fullLink
+                    } else if (label.includes('this year') || label.includes('in ')) {
+                        data.statistics.year = {}
+                        data.statistics.year.count = value
+                        data.statistics.year.url = fullLink
+                    } else if (label.includes('lists')) {
+                        data.statistics.lists = {}
+                        data.statistics.lists.count = value
+                        data.statistics.lists.url = fullLink
+                    } else if (label.includes('following')) {
+                        data.statistics.following = {}
+                        data.statistics.following.count = value
+                        data.statistics.following.url = fullLink
+                    } else if (label.includes('followers')) {
+                        data.statistics.followers = {}
+                        data.statistics.followers.count = value
+                        data.statistics.followers.url = fullLink
                     }
                 })
 
             return data
         })
-
-        const favoriteFilmsList = await page.evaluate(() => {
-            const movies = []
-
+        
+        const mainData = await page.evaluate(() => {
+            const data = {}
+            
+            data.favoriteFilms = []
             document.querySelectorAll('.favourite-production-poster-container')
                 .forEach(el => {
                     const component = el.querySelector('.react-component')
 
-                    movies.push({
+                    data.favoriteFilms.push({
                         title: component?.getAttribute('data-item-name'),
                         url: 'https://letterboxd.com' + component?.getAttribute('data-item-link'),
                         reviewUrl: 'https://letterboxd.com' + component?.getAttribute('data-target-link'),
                         imageUrl: component?.querySelector('img')?.src
                     })
                 })
-
-            return movies
-        })
-
-        const recentFilmsList = await page.evaluate(() => {
-            const movies = []
-
-            const section = document.querySelector('#recent-activity')
-
-            section?.querySelectorAll('.viewing-poster-container')
+            
+            data.recentFilms = {
+                url: 'https://letterboxd.com' + document.querySelector('#recent-activity .section-heading a')?.getAttribute('href'),
+                films: []
+            }
+            document.querySelector('#recent-activity')?.querySelectorAll('.viewing-poster-container')
                 .forEach(el => {
                     const component = el.querySelector('.react-component')
-
-                    movies.push({
+                    const viewingData = el.querySelector('.poster-viewingdata')
+                    data.recentFilms.films.push({
                         title: component?.getAttribute('data-item-name'),
                         url: 'https://letterboxd.com' + component?.getAttribute('data-item-link'),
                         reviewUrl: 'https://letterboxd.com' + component?.getAttribute('data-target-link'),
-                        imageUrl: component?.querySelector('img')?.src
+                        imageUrl: component?.querySelector('img')?.src,
+                        rating: viewingData?.querySelector('.rating[class*="rated-"]') || null,
+                        liked: viewingData?.querySelector('.liked') ? true : null,
+                        rewatched: viewingData?.querySelector('.icon-rewatch')?.textContent.trim() || null,
+                        reviewed: viewingData?.querySelector('.icon-review')?.textContent.trim() || null
                     })
                 })
 
-            return movies
-        })
+            data.reviews = {
+                pinnedLink: null,
+                pinned: [],
+                recentLink: null,
+                recent: [],
+                popularLink: null,
+                popular: []
+            }
+            document.querySelectorAll('.section').forEach(section => {
+                const title = section.querySelector('h2')?.textContent.toLowerCase()
+                const reviews = section.querySelectorAll('.production-viewing')
+                const link = 'https://letterboxd.com' + section.querySelector('.section-heading a')?.getAttribute('href')
 
-        const recentReviewsList = await page.evaluate(() => {
-            const reviews = []
-
-            document.querySelectorAll('.production-viewing')
-                .forEach(el => {
+                reviews.forEach(el => {
                     const component = el.querySelector('.react-component')
-                    const review = el.querySelector('.js-review')
+                    const reviewEl = el.querySelector('.js-review')
 
-                    reviews.push({
+                    const reviewData = {
                         title: component?.getAttribute('data-item-name'),
                         url: 'https://letterboxd.com' + component?.getAttribute('data-item-link'),
                         reviewUrl: 'https://letterboxd.com' + el.querySelector('.primaryname a')?.getAttribute('href'),
                         imageUrl: component?.querySelector('img')?.src,
-                        watchDate: el.querySelector('.date .timestamp')?.textContent.trim(),
-                        comment: review?.querySelector('.body-text')?.textContent.trim(),
-                        likes: review?.querySelector('.like-link-target')?.getAttribute('data-count')
-                    })
+                        rewatched: !!el.querySelector('.icon-rewatch'),
+                        watchDate: el.querySelector('.date .timestamp')?.textContent.trim() || null,
+                        comment: reviewEl?.querySelector('.body-text')?.textContent.trim() || null,
+                        likes: parseInt(reviewEl?.querySelector('.like-link-target')?.getAttribute('data-count') || '0', 10),
+                        // commentCount: reviewEl?.querySelector('.comment-link-target')?.getAttribute('data-count') || "0"
+                    }
+
+                    if (title.includes('pinned')) {
+                        data.reviews.pinnedLink = link
+                        data.reviews.pinned.push(reviewData)
+                    } else if (title.includes('recent')) {
+                        data.reviews.recentLink = link
+                        data.reviews.recent.push(reviewData)
+                    } else if (title.includes('popular')) {
+                        data.reviews.popularLink = link
+                        data.reviews.popular.push(reviewData)
+                    }
                 })
+            })
+            
+            const tagSection = Array.from(document.querySelectorAll('.section')).find(section =>
+                section.querySelector('h3')?.textContent.toLowerCase().includes('tags')
+            )
+            data.tagList = {
+                url: 'https://letterboxd.com' + tagSection.querySelector('.section-heading a')?.getAttribute('href'),
+                tagCount: tagSection.querySelector('.all-link')?.textContent.trim() || "0",
+                tags: []
+            }
+            tagSection.querySelectorAll('.tags li a').forEach(el => {
+                data.tagList.tags.push({
+                name: el.textContent.trim(),
+                url: 'https://letterboxd.com' + el.getAttribute('href')
+                })
+            })
 
-            return reviews
-        })
-
-        const followingList = await page.evaluate(() => {
-            const users = []
-
-            document.querySelectorAll('.avatar-list .avatar')
+            const followingSection = Array.from(document.querySelectorAll('.section')).find(section =>
+                section.querySelector('h3')?.textContent.toLowerCase().includes('following')
+            )
+            data.followingList = {
+                url: 'https://letterboxd.com' + followingSection.querySelector('.section-heading a')?.getAttribute('href'),
+                followingCount: followingSection.querySelector('.all-link')?.textContent.trim() || "0",
+                users: []
+            }
+            followingSection.querySelectorAll('.avatar-list .avatar')
                 .forEach(el => {
-                    users.push({
+                    data.followingList.users.push({
                         username: el.getAttribute('data-original-title'),
                         url: 'https://letterboxd.com' + el.getAttribute('href'),
                         imageUrl: el.querySelector('img')?.src
                     })
                 })
 
-            return users
+            return data
         })
 
         await browser.close()
 
         res.json({ 
             username,
-            nickname, 
-            url, 
-            profileImg,
-            backdropImg, 
-            subscription,
-            profileInfo,
-            // bioLinks,
-            // filmCount,
-            // yearCount,
-            // listCount,
-            // followingCount,
-            // followersCount,
-            favoriteFilmsList, 
-            recentFilmsList, 
-            // pinnedReviewsList,
-            recentReviewsList,
-            // popularReviewsList,
-            // tagList,
-            followingList
+            url,
+            headerData,
+            mainData
         })
 
     } catch (error) {
